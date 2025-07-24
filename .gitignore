@@ -1,0 +1,66 @@
+# --------------------------
+# Python-related ignores
+# --------------------------
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment variables / secrets
+.env
+
+# VSCode / PyCharm / IDE configs
+.vscode/
+.idea/
+
+# Virtual environment folders
+venv/
+ENV/
+env/
+*.egg-info/
+
+# --------------------------
+# Data-related ignores
+# --------------------------
+
+# Raw data files
+*.grib
+*.grib2
+*.nc
+*.hdf
+*.tif
+*.csv
+*.zip
+
+# Model weights
+*.h5
+*.pt
+*.pth
+*.ckpt
+*.joblib
+
+# Large binary results
+*.npy
+*.npz
+
+# --------------------------
+# Logs and outputs
+# --------------------------
+
+*.log
+*.out
+*.tmp
+*.bak
+
+# --------------------------
+# System files
+# --------------------------
+
+.DS_Store
+Thumbs.db
+desktop.ini
