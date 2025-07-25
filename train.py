@@ -7,15 +7,19 @@ from model import StormTransformer
 
 # ==== CẤU HÌNH ====
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-feature_path = "all_features.npy"
-label_path = "storm_labels_grib.npy"
+feature_path = "all_features.npy"             # [T, 25, 73, 61]
+label_path = "storm_labels_grib.npy"          # [T, 2]
 sequence_length = 20
 batch_size = 16
 num_epochs = 20
 learning_rate = 1e-4
 
 # ==== LOAD DATA ====
-full_dataset = StormTrackDataset(feature_path=feature_path, sequence_length=sequence_length)
+full_dataset = StormTrackDataset(
+    feature_path=feature_path,
+    label_path=label_path,
+    sequence_length=sequence_length
+)
 
 total_len = len(full_dataset)
 train_len = int(0.7 * total_len)
@@ -38,10 +42,11 @@ best_val_loss = float('inf')
 for epoch in range(num_epochs):
     model.train()
     train_loss = 0.0
+
     for inputs, targets in train_loader:
-        # Nếu input là [B, T, 25, H, W] thì cần trung bình không gian
+        # Trung bình không gian nếu là ảnh (B, T, 25, 73, 61) -> (B, T, 25)
         if inputs.ndim == 5:
-            inputs = inputs.mean(dim=[-2, -1])  # [B, T, 25]
+            inputs = inputs.mean(dim=[-2, -1])
 
         inputs = inputs.to(device)
         targets = targets.to(device)
@@ -61,8 +66,10 @@ for epoch in range(num_epochs):
         for inputs, targets in val_loader:
             if inputs.ndim == 5:
                 inputs = inputs.mean(dim=[-2, -1])
+
             inputs = inputs.to(device)
             targets = targets.to(device)
+
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             val_loss += loss.item()

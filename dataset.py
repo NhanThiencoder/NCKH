@@ -4,23 +4,22 @@ from torch.utils.data import Dataset
 
 
 class StormTrackDataset(Dataset):
-    def __init__(self, feature_path, sequence_length=20):
+    def __init__(self, feature_path, label_path, sequence_length=20):
         self.sequence_length = sequence_length
-        self.inputs = []
-        self.labels = []
 
-        data = np.load(feature_path)  # [T, 27] = 25 features + 2 labels
-        total_seq = len(data) - sequence_length + 1
+        self.features = np.load(feature_path)  # [T, 25, 73, 61]
+        self.labels = np.load(label_path)      # [T, 2]
 
-        for i in range(total_seq):
-            seq = data[i:i + sequence_length]
-            x = seq[:, :25]   # [T, 25] - 25 features
-            y = seq[:, 25:]   # [T, 2]  - 2 tọa độ (lat, lon)
-            self.inputs.append(torch.tensor(x, dtype=torch.float32))
-            self.labels.append(torch.tensor(y, dtype=torch.float32))
+        assert len(self.features) == len(self.labels), "Số lượng feature và label không khớp!"
 
     def __len__(self):
-        return len(self.inputs)
+        return len(self.features) - self.sequence_length + 1
 
     def __getitem__(self, idx):
-        return self.inputs[idx], self.labels[idx]
+        x = self.features[idx:idx + self.sequence_length]  # [T, 25, 73, 61]
+        y = self.labels[idx:idx + self.sequence_length]    # [T, 2]
+
+        x_tensor = torch.tensor(x, dtype=torch.float32)
+        y_tensor = torch.tensor(y, dtype=torch.float32)
+
+        return x_tensor, y_tensor
