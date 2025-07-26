@@ -1,89 +1,46 @@
-import os
+import numpy as np
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from dataset import StormTrackDataset
-from model import StormTransformer
 
-# ==== CẤU HÌNH ====
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-feature_path = "all_features.npy"             # [T, 25, 73, 61]
-label_path = "storm_labels_grib.npy"          # [T, 2]
+# ==== Cấu hình ====
 sequence_length = 20
 batch_size = 16
-num_epochs = 20
-learning_rate = 1e-4
+feature_path = "all_features.npy"         # [T, 25, 73, 61]
+label_path = "storm_labels_grib.npy"      # [T, 2]
+split_ratio = (0.7, 0.15, 0.15)
 
-# ==== LOAD DATA ====
+# ==== Load trước để lấy min/max (không load hết vào RAM) ====
+features = np.load(feature_path, mmap_mode='r')
+min_val = features.min()
+max_val = features.max()
+print(f"Min: {min_val}, Max: {max_val}")
+
+# ==== Tạo Dataset ====
 full_dataset = StormTrackDataset(
     feature_path=feature_path,
     label_path=label_path,
-    sequence_length=sequence_length
+    sequence_length=sequence_length,
+    min_val=min_val,
+    max_val=max_val
 )
 
+# ==== Chia train/val/test ====
 total_len = len(full_dataset)
-train_len = int(0.7 * total_len)
-val_len = int(0.15 * total_len)
+train_len = int(split_ratio[0] * total_len)
+val_len = int(split_ratio[1] * total_len)
 test_len = total_len - train_len - val_len
 
-train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_len, val_len, test_len])
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=batch_size)
-test_loader = DataLoader(test_dataset, batch_size=batch_size)
+train_set, val_set, test_set = random_split(full_dataset, [train_len, val_len, test_len])
 
-# ==== KHỞI TẠO MÔ HÌNH ====
-model = StormTransformer(input_dim=25, output_dim=2).to(device)
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+# ==== Dataloader ====
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
-# ==== HUẤN LUYỆN ====
-best_val_loss = float('inf')
-
-for epoch in range(num_epochs):
-    model.train()
-    train_loss = 0.0
-
+# ==== Kiểm tra thử ====
+if __name__ == "__main__":
     for inputs, targets in train_loader:
-        # Trung bình không gian nếu là ảnh (B, T, 25, 73, 61) -> (B, T, 25)
-        if inputs.ndim == 5:
-            inputs = inputs.mean(dim=[-2, -1])
-
-        inputs = inputs.to(device)
-        targets = targets.to(device)
-
-        optimizer.zero_grad()
-        outputs = model(inputs)  # [B, T, 2]
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-
-        train_loss += loss.item()
-
-    # ==== ĐÁNH GIÁ ====
-    model.eval()
-    val_loss = 0.0
-    with torch.no_grad():
-        for inputs, targets in val_loader:
-            if inputs.ndim == 5:
-                inputs = inputs.mean(dim=[-2, -1])
-
-            inputs = inputs.to(device)
-            targets = targets.to(device)
-
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
-            val_loss += loss.item()
-
-    avg_train = train_loss / len(train_loader)
-    avg_val = val_loss / len(val_loader)
-    print(f"Epoch [{epoch + 1}/{num_epochs}] - Train Loss: {avg_train:.6f} - Val Loss: {avg_val:.6f}")
-
-    # ==== LƯU MODEL TỐT NHẤT ====
-    if avg_val < best_val_loss:
-        best_val_loss = avg_val
-        torch.save(model.state_dict(), "best_storm_transformer.pth")
-        print("==> Đã lưu mô hình tốt nhất!")
-
-# ==== LƯU MÔ HÌNH CUỐI ====
-torch.save(model.state_dict(), "storm_transformer_final.pth")
-print("Đã lưu mô hình cuối cùng.")
+        print("Input shape:", inputs.shape)   # [B, T, 25, 73, 61]
+        print("Target shape:", targets.shape) # [B, T, 2]
+        break
